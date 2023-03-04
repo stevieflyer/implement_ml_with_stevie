@@ -1,1 +1,1 @@
-from classification.knn import KNearestNeighbors
+from classification.knn_bf import KNearestNeighborsBF

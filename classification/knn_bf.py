@@ -2,10 +2,9 @@ import numpy as np
 from scipy import stats
 
 from utils.metrics import LpMetric
-from utils.tree import KDTree
 
 
-class KNearestNeighbors:
+class KNearestNeighborsBF:
     """
     The base KNearestNeighbor class.
 
@@ -30,8 +29,6 @@ class KNearestNeighbors:
         self.n_neighbors = k
         """(int) the number of neighbors"""
         self._X = None
-        self._tree: KDTree = None
-        """(KDTree) the KDTree representation of self._X"""
         """(np.ndarray) shape (n_train_samples, n_features) the training data"""
         self._labels = None
         """(np.ndarray) shape (n_train_samples,) the labels of the training data"""
@@ -49,7 +46,6 @@ class KNearestNeighbors:
         :return: None
         """
         self._X = X
-        self._tree = KDTree(X)
         self._labels = labels
 
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -63,14 +59,9 @@ class KNearestNeighbors:
         :return: (np.ndarray) shape (n_samples,) the predicted labels
         """
         # Step 1: Find the nearest `n_neighbors` neighbors
-        # kdtree version
-        neighbors_list = []
-        for target_point in X:
-            neighbors = np.array([point for point, dist in self._tree.search_knn(target_point, self.n_neighbors)])
-            neighbors_list.append(neighbors)
-        neighbors = np.stack(neighbors_list)
-
-        print('neighbors.shape: {}'.format(neighbors.shape))
+        # brute-force version:
+        dists = self._metric.distance(X, self._X)
+        neighbors = dists.argsort()[:, :self.n_neighbors]   # the default axis is -1
 
         # Step 2: Decide the output according to the neighborhood statistics
         if self.classification:
@@ -89,7 +80,7 @@ class KNearestNeighbors:
         :param neighbors: (np.ndarray) shape (n_samples, n_neighbors)
         :return: (np.array) prediction, shape (n_samples,)
         """
-        return np.array([stats.mode(self._labels[ns])[0][0] for ns in neighbors])
+        return np.array([stats.mode(self._labels[ns], keepdims=False)[0] for ns in neighbors])
 
     def __average_vote(self, neighbors: np.ndarray):
         """
@@ -99,3 +90,6 @@ class KNearestNeighbors:
         :return: (np.ndarray) prediction, shape (n_samples,)
         """
         return np.array([np.mean(self._labels[ns]) for ns in neighbors])
+
+
+
